@@ -1,17 +1,29 @@
-avrheaderconverter: 
-place for header conversion 
+This project has the goal to manipulate input and output pins of avr devices over serial interface,
+allowing python scripts to set and get io states of the device. 
+source for io change is a file creation and the output is set after an algorithm evaluating the file content. 
+it is possible to change io on the fly with a terminal input according to the protocol 
 
-drop the device specific header in the avr folder
+it consists of 
+- terminal class: 	handling the communication with the device for python scripts 
+- headerconverter: 	to be able to use familiar naming conventions in python
+- filehandler:		polling folders for input files 
+- avr firmware:     serving the incoming requests
+
+
+avrheaderconverter: 
+- place for header conversion 
+
+- drop the device specific header in the avr folder
     you can find the appropriate header in io.h 
     in the line below #if defined (__YOUR_DEVICE__)
     
-    maybe a device class specific header is needed also for example iocanxx.h
-
-run:  h2py io.h
+    maybe a device class specific header is needed also, for example iocanxx.h
+    
+- run:  h2py io.h
     or 
-call: h2py.convert(['avr/io.h'])
+- call: h2py.convert(['avr/io.h'])
 
-this generates IO.py which can be imported in the terminal to
+- this generates IO.py which can be imported in the terminal to
     use it just like #include <avr/io.h> names
     
 Notes:
@@ -22,31 +34,42 @@ vectors and such things. (no program memory)
 
 
 terminal:
-place for communication
-remoAVR:
-AVR class used for manipulating registers in the device over uart
+- place for communication
+	remoAVR:
+		AVR class used for manipulating registers in the device over uart
+		
+		Protocol: 
+		All values and addresses are transmitted formated in hex (0x12af)
+		
+		__instructions:_________________________
+		
+		's' set value at address
+		    send: s <addr> <val>\r
+		    recv: s <addr> <val> [err_val]\n\r
+		    
+		'g' get value from address
+		    send: g <addr>\r
+		    recv: g <addr> <value>\n\r
+		________________________________________
+		
+		remoAVR does:
+		setup serial communication 
+		issue instruction
+		parse return value 
+		
+		if IO.py is imported then all registers can be addressed through their usual names 
 
-Protocol: 
-All values and addresses are transmitted formated in hex (0x12af)
 
-__instructions:_________________________
+filehandler:
+only proof of concept atm
+TODO: implement algorithm, polling
 
-'s' set value at address
-    send: s <addr> <val>\r
-    recv: s <addr> <val> [err_val]\n\r
-    
-'g' get value from address
-    send: g <addr>\r
-    recv: g <addr> <value>\n\r
 
-________________________________________
+avr firmware:
+based on Peter Fleury's uart. 
+waits for a instruction to be finalized with return
+is build in avr studio 6 
+for atmega2560 uart0 (tested)
+TODO: for atmega16
 
-remoAVR does:
-setup serial communication 
-issue instruction
-parse return value 
-
-if IO.py is imported then all registers have their usual names 
-
-    
 
