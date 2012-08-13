@@ -26,17 +26,15 @@ setup serial communication
 issue instruction
 parse return value 
     evtl raise exception
-
-
+    
 
 '''
-
-
 
 import serial
 import time
 import string
 
+from avrheaderconverter.IO import *
 '''
 establish serial connection
 get name of device 
@@ -44,9 +42,7 @@ generate header
 import header 
 '''
 
-#import h2py
 
-#h2py.convert(['avr/io.h'])
 
 class AVR:
     
@@ -122,12 +118,11 @@ def test():
     delay_bytes = 7
     while 1:
         for e in range(8):
-            ret = mc.setValAddr(0x25, ~(1<<e))
+            ret = mc.setValAddr(PORTB, ~(1<<e))
             delay =  0.125 - ((len(ret) + delay_bytes ) * mc.t_trans)
             if delay < 0:
                 delay = 0
             time.sleep(delay)
-    1+1
     pass
         
 

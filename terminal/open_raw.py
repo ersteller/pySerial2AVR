@@ -8,7 +8,6 @@ import time
 import os
 
 
-
 def getRawFiles(data_path):
     # returns all files found in "raw" subfolders of data_path
     file_list = list()
@@ -26,9 +25,7 @@ def isFileNewerThan(path, time):
     else: 
         return False 
 
-
 filename = "d00146_20120810230115"
-
 
 files = getRawFiles(os.getcwd())
 for e in files:

@@ -207,4 +207,4 @@ def process(fp, outfp, env = {}):
                                      filename)
 
 if __name__ == '__main__':
-    main()
+    convert(['avr/io.h'])
