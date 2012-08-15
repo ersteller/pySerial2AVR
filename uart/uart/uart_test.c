@@ -28,6 +28,9 @@ DESCRIPTION:
 
 
 /* define CPU frequency in Mhz here if not defined in Makefile */
+
+#define F_CPU 8000000UL
+
 #ifndef F_CPU
 #define F_CPU 8000000UL
 #endif
@@ -66,7 +69,8 @@ int main(void)
     char buffer[7];
     int  num=134;
 	char instruction[8] = {0};
-		
+	uint8_t cnt = 0;	
+			
 	DDRB = 0xff;
 	PORTB = 0xfe;
 
@@ -121,7 +125,16 @@ int main(void)
          * UART_NO_DATA is returned when no data is available.
          *
          */
-        c = uart_getc();
+		
+		/*
+		if (cnt > 100)
+		{	
+			cnt = 0;
+			PORTB = PORTB ^ 1;
+		}        
+		cnt++;*/
+		
+		c = uart_getc();
         if ( c & UART_NO_DATA )
         {
             /* 

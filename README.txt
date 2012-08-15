@@ -70,6 +70,6 @@ based on Peter Fleury's uart.
 waits for a instruction to be finalized with return
 is build in avr studio 6 
 for atmega2560 uart0 (tested)
-TODO: for atmega16
+for atmega16  uart (tested)
 
 
