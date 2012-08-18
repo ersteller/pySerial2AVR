@@ -108,7 +108,7 @@ class AVR:
 def test():
     mc = AVR()
     
-    mc.setValAddr(0x25,0xfe)
+    mc.setValAddr(PORTB,0)
     
     ''' for e in range(8):
         mc.toggle(37,~(1<<e), 0.5)
