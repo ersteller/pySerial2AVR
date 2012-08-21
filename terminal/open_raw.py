@@ -13,7 +13,7 @@ import remoAVR
 
 
 def getRawFiles(data_path):
-    # returns all files found in "raw" subfolders of data_path 
+    # returns all files found in "raw" sub folders of data_path 
     file_list = list()
     for root, dirs, files in os.walk(data_path):
         if "raw" in root:
@@ -116,7 +116,7 @@ while 1:
          
     header = F.readline().strip()
     keys = F.readline().strip()
-    # TODO: letzte gueltige Zeile auslesen
+    # TODO: readout last valid line in file 
     werte = F.readline().strip()
     
     liste_sensoren = keys.split(",")
