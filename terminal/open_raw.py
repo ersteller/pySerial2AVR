@@ -6,19 +6,19 @@ Created on 10.08.2012
 
 import time 
 import os
-import subprocess
-import time 
+import subprocess 
 import string
+import ConfigParser
 import remoAVR
 
 
 def getRawFiles(data_path):
-    # returns all files found in "raw" subfolders of data_path
+    # returns all files found in "raw" subfolders of data_path 
     file_list = list()
     for root, dirs, files in os.walk(data_path):
         if "raw" in root:
             for e in files:
-                file_list.append(root + "\\" + e) 
+                file_list.append(root + e) 
     return file_list
 
 def isFileNewerThan(path, time):
@@ -28,27 +28,69 @@ def isFileNewerThan(path, time):
         return True
     else: 
         return False 
-  
+
+def readConfig():
+    # reads config.txt file and generates global statements
+    config = ConfigParser.RawConfigParser()
+    config.read('config.cfg')
     
+    global zyklus
+    zyklus = config.getint('globals', 'zyklus')                        # sensor werte auslese zyklus in secunden 
+    
+    global data_path
+    data_path = config.get('globals', 'data_path')                  # path of raw files
+    
+    global export_path
+    export_path = config.get('globals', 'export_path')              # path of converted files
+    
+    global install_path
+    install_path = config.get('globals', 'install_path')            # install path of the raw file converter
+    
+    global delete_used_files
+    delete_used_files = config.getboolean('globals', 'delete_used_files')  # enable deleting old raw files after reading 
+    
+    global logger_cnt
+    logger_cnt = config.getint('globals', 'logger_cnt')                # the amount of loggers                  ;# the amount of loggers
+    
+    global sensor_ports
+    sensor_ports_list = config.items('sensor_port_assignment')
+    sensor_ports
+    for key, value in sensor_ports_list:
+        try:
+            sensor_ports[key] = int(value)
+        except:
+            pass
+      
+
+
 date = 0
 letzte_zyklus = 0
-zyklus = 900
+zyklus = 901
+data_path = "C:\\GP5W_Shell\\DATA\\"
+export_path = "C:\\GP5W_Shell\\export\\"
+install_path = "c:\\GP5W_Shell\\GP5wSHELL.exe"
+delete_used_files = False
+sensor_ports = dict() 
+
+# overwrite default values if present in config file
+readConfig()     
+
+
 mc = remoAVR.AVR()
 mc.setValAddr(remoAVR.DDRA,0xff)
 mc.setValAddr(remoAVR.PORTA,0x00)
 mc.setValAddr(remoAVR.PORTB,0x01)
 while 1:
-    #TODO: zyklus time in config file
     anfangszeit = time.time()
     wartezeit = letzte_zyklus + zyklus - anfangszeit
     letzte_zyklus = anfangszeit
     if wartezeit > 0:
         time.sleep(wartezeit)
     
-    files = getRawFiles("C:\GP5W_Shell\DATA")
+    files = getRawFiles(data_path)
     
     newest_file = 0
-    
+    # TODO: multiple loggers generate more than one new file
     for filepath in files:
         if isFileNewerThan (filepath,date):
             date = os.path.getmtime (filepath)
@@ -57,26 +99,24 @@ while 1:
     if not newest_file:
         continue
         
-      
-    
     #converting g2d to raw
-    
-    proc = subprocess.Popen('c:\\GP5W_Shell\\GP5wSHELL.exe' +  ' ' + newest_file)
+    proc = subprocess.Popen( install_path +  ' ' + newest_file)
     time.sleep(5)
     proc.kill()
     
-    #for filepath in files:
-        #os.remove(filepath) 
+    if delete_used_files: 
+        for filepath in files:
+            os.remove(filepath) 
     
+    # open exported file
     path, filename = os.path.split(newest_file)
-    
+    # drop file extension from filename
     filename  = string.split(filename,'.')[0]
-    
-    F = open("C:\\GP5W_Shell\\export\\" + filename + ".csv")
+    F = open(export_path + filename + ".csv")
          
     header = F.readline().strip()
     keys = F.readline().strip()
-    #todo letzte gueltige Zeile auslesen
+    # TODO: letzte gueltige Zeile auslesen
     werte = F.readline().strip()
     
     liste_sensoren = keys.split(",")
@@ -101,7 +141,7 @@ while 1:
     
 
 
-    
+    # TODO: sensor port zuordnen
     for sensor_keys in ergebnis_messung_sensoren.keys():
                
         #senor_messwerte.append(ergebnis_messung_sensor[sensor_keys])
@@ -115,6 +155,7 @@ while 1:
         stellgroesse = regelabweichung * Kp
         
         if stellgroesse > 0:
+            
             mc.setValAddr(remoAVR.PORTB,0x00)
             mc.toggle(remoAVR.PORTA, 1, stellgroesse)
             mc.setValAddr(remoAVR.PORTB,0xff)
