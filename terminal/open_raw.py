@@ -116,7 +116,7 @@ while 1:
          
     header = F.readline().strip()
     keys = F.readline().strip()
-    # TODO: readout last valid line in file 
+    # TODO: readout last valid line in file
     werte = F.readline().strip()
     
     liste_sensoren = keys.split(",")

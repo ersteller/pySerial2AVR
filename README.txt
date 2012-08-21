@@ -62,7 +62,7 @@ terminal:
 
 filehandler:
 only proof of concept atm
-TODO: implement algorithm, polling
+
 
 
 avr firmware:
