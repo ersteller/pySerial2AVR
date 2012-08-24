@@ -18,7 +18,7 @@ def getRawFiles(data_path):
     for root, dirs, files in os.walk(data_path):
         if "raw" in root:
             for e in files:
-                file_list.append(root + e) 
+                file_list.append(root+"\\"+ e) 
     return file_list
 
 def isFileNewerThan(path, time):
@@ -29,6 +29,13 @@ def isFileNewerThan(path, time):
     else: 
         return False 
 
+
+        
+    return loggers 
+    
+        
+    
+    
 def readConfig():
     # reads config.txt file and generates global statements
     config = ConfigParser.RawConfigParser()
@@ -36,6 +43,9 @@ def readConfig():
     
     global zyklus
     zyklus = config.getint('globals', 'zyklus')                        # sensor werte auslese zyklus in secunden 
+    
+    # TODO: Kp wert 
+    # TODO: SOLLWERT
     
     global data_path
     data_path = config.get('globals', 'data_path')                  # path of raw files
@@ -49,9 +59,11 @@ def readConfig():
     global delete_used_files
     delete_used_files = config.getboolean('globals', 'delete_used_files')  # enable deleting old raw files after reading 
     
-    global logger_cnt
-    logger_cnt = config.getint('globals', 'logger_cnt')                # the amount of loggers                  ;# the amount of loggers
-    
+    global loggers
+    loggers_keyvalue = config.items('loggers')                                   # list sensor_names
+    for key, value in loggers_keyvalue:
+        loggers.append(value)
+        
     global sensor_ports
     sensor_ports_list = config.items('sensor_port_assignment')
     sensor_ports
@@ -71,6 +83,7 @@ export_path = "C:\\GP5W_Shell\\export\\"
 install_path = "c:\\GP5W_Shell\\GP5wSHELL.exe"
 delete_used_files = False
 sensor_ports = dict() 
+loggers = []
 
 # overwrite default values if present in config file
 readConfig()     
@@ -87,94 +100,105 @@ while 1:
     if wartezeit > 0:
         time.sleep(wartezeit)
     
-    files = getRawFiles(data_path)
+  
     
-    newest_file = 0
-    # TODO: multiple loggers generate more than one new file
-    for filepath in files:
-        if isFileNewerThan (filepath,date):
-            date = os.path.getmtime (filepath)
-            newest_file = filepath
-    
-    if not newest_file:
-        continue
+    for logger in loggers:
         
-    #converting g2d to raw
-    proc = subprocess.Popen( install_path +  ' ' + newest_file)
-    time.sleep(5)
-    proc.kill()
-    
-    if delete_used_files: 
+        files = getRawFiles(data_path + logger + "\\")
+        
+        newest_file = 0
+
         for filepath in files:
-            os.remove(filepath) 
+            if isFileNewerThan (filepath,date):
+                date = os.path.getmtime (filepath)
+                newest_file = filepath
+        
+        if not newest_file:
+            continue
+            
+        #converting g2d to raw
+        proc = subprocess.Popen( install_path +  ' ' + newest_file)
+        time.sleep(5)
+        proc.kill()
+        
+        if delete_used_files: 
+            for filepath in files:
+                os.remove(filepath) 
+        
+        # open exported file
+        path, filename = os.path.split(newest_file)
+        # drop file extension from filename
+        filename  = string.split(filename,'.')[0]
+        F = open(export_path + filename + ".csv")
+             
+        header = F.readline().strip()
+        keys = F.readline().strip()
+        # TODO: readout last valid line in file 
+        werte = F.readline().strip()
+        
+        F.close()
+        
+        liste_sensoren = keys.split(",")
+        liste_werte = werte.split(",")
+        liste_floatwerte = list()
+        for e in liste_werte:
+            try:
+                liste_floatwerte.append(float(e))
+            except:
+                liste_floatwerte.append(e)
+                
+        
+        ergebnis_messung = dict(zip(liste_sensoren, liste_floatwerte)) 
+        
+        ergebnis_messung_sensoren = dict(ergebnis_messung)
+            
+        for key in ergebnis_messung.keys():
+                       
+            # loeschen alle Buchstaben aus Schluessel 
+            # pruefen ob Zahl uebrig -> ergibt sensorkey
+            # also nicht in ergebnis_messung_sensoren loeschen
+            # TODO: clear ergebnis_messung_sensoren of other stuff
+            if not str.isdigit(key.strip(string.letters)):
+                del ergebnis_messung_sensoren[key]
+            
+        #senor_messwerte = list()
+        
     
-    # open exported file
-    path, filename = os.path.split(newest_file)
-    # drop file extension from filename
-    filename  = string.split(filename,'.')[0]
-    F = open(export_path + filename + ".csv")
-         
-    header = F.readline().strip()
-    keys = F.readline().strip()
-    # TODO: readout last valid line in file 
-    werte = F.readline().strip()
     
-    liste_sensoren = keys.split(",")
-    liste_werte = werte.split(",")
-    liste_floatwerte = list()
-    for e in liste_werte:
-        try:
-            liste_floatwerte.append(float(e))
-        except:
-            liste_floatwerte.append(e)
+        # TODO: sensor port zuordnen
+        for sensor_keys in ergebnis_messung_sensoren.keys():
+                   
+            #senor_messwerte.append(ergebnis_messung_sensor[sensor_keys])
+                
+            sollwert = 40
+            
+            Kp = 22
+            
+            istwert= ergebnis_messung [sensor_keys] 
+            regelabweichung = sollwert - istwert
+            stellgroesse = regelabweichung * Kp
+            
+            if stellgroesse > 0:
+                
+                mc.setValAddr(remoAVR.PORTB,0x00)
+                mc.toggle(remoAVR.PORTA, 1, stellgroesse)
+                mc.setValAddr(remoAVR.PORTB,0xff)
+    
+                
+    pass
+    
+    
             
     
-    ergebnis_messung = dict(zip(liste_sensoren, liste_floatwerte)) 
     
-    ergebnis_messung_sensoren = dict(ergebnis_messung)
-        
-    for key in ergebnis_messung.keys():
     
-        if"#" not in key:del ergebnis_messung_sensoren[key]
-        
-    #senor_messwerte = list()
     
-
-
-    # TODO: sensor port zuordnen
-    for sensor_keys in ergebnis_messung_sensoren.keys():
-               
-        #senor_messwerte.append(ergebnis_messung_sensor[sensor_keys])
-            
-        sollwert = 40
-        
-        Kp = 22
-        
-        istwert= ergebnis_messung [sensor_keys] 
-        regelabweichung = sollwert - istwert
-        stellgroesse = regelabweichung * Kp
-        
-        if stellgroesse > 0:
-            
-            mc.setValAddr(remoAVR.PORTB,0x00)
-            mc.toggle(remoAVR.PORTA, 1, stellgroesse)
-            mc.setValAddr(remoAVR.PORTB,0xff)
-
-            
-pass
-
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
     
+    
+    
+    
+    
+    
+    
+    
+        
