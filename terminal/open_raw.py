@@ -28,14 +28,8 @@ def isFileNewerThan(path, time):
         return True
     else: 
         return False 
-
-
-        
-    return loggers 
     
         
-    
-    
 def readConfig():
     # reads config.txt file and generates global statements
     config = ConfigParser.RawConfigParser()
@@ -44,8 +38,7 @@ def readConfig():
     global zyklus
     zyklus = config.getint('globals', 'zyklus')                        # sensor werte auslese zyklus in secunden 
     
-    # TODO: Kp wert 
-    # TODO: SOLLWERT
+    # TODO: sollwert pro senso SOLLWERT
     
     global data_path
     data_path = config.get('globals', 'data_path')                  # path of raw files
@@ -56,13 +49,16 @@ def readConfig():
     global install_path
     install_path = config.get('globals', 'install_path')            # install path of the raw file converter
     
+    global Kp
+    Kp = config.getint('globals', 'Kp')
+    
     global delete_used_files
     delete_used_files = config.getboolean('globals', 'delete_used_files')  # enable deleting old raw files after reading 
     
     global loggers
     loggers_keyvalue = config.items('loggers')                                   # list sensor_names
     for key, value in loggers_keyvalue:
-        loggers.append(value)
+        loggers[int(key)] = value
         
     global sensor_ports
     sensor_ports_list = config.items('sensor_port_assignment')
@@ -72,18 +68,42 @@ def readConfig():
             sensor_ports[key] = int(value)
         except:
             pass
-      
+ 
+# internal wiring       
+PinPort = dict()    
+PinPort['1'] = (remoAVR.PORTA, 0x01) 
+PinPort['2'] = (remoAVR.PORTA, 0x02)
+PinPort['3'] = (remoAVR.PORTA, 0x04)
+PinPort['4'] = (remoAVR.PORTA, 0x08)
+PinPort['5'] = (remoAVR.PORTA, 0x10)
+PinPort['6'] = (remoAVR.PORTA, 0x20)
+PinPort['7'] = (remoAVR.PORTA, 0x40)
+PinPort['8'] = (remoAVR.PORTA, 0x80)
+PinPort['9'] = (remoAVR.PORTB, 0x01)
+PinPort['10'] = (remoAVR.PORTB, 0x02)
+PinPort['11'] = (remoAVR.PORTB, 0x04)
+PinPort['12'] = (remoAVR.PORTB, 0x08)
+PinPort['13'] = (remoAVR.PORTB, 0x10)
+PinPort['14'] = (remoAVR.PORTB, 0x20)
+PinPort['15'] = (remoAVR.PORTB, 0x40)
+PinPort['16'] = (remoAVR.PORTB, 0x80)
+  
+def getPort(logger, sensor):
+    # may raise key value error if "logger,sensor" has no Port assignment
+    Port = sensor_ports[str(logger) + "," + str(sensor)]    
+    return PinPort[str(Port)]
 
 
 date = 0
 letzte_zyklus = 0
 zyklus = 901
+Kp = 0
 data_path = "C:\\GP5W_Shell\\DATA\\"
 export_path = "C:\\GP5W_Shell\\export\\"
 install_path = "c:\\GP5W_Shell\\GP5wSHELL.exe"
 delete_used_files = False
 sensor_ports = dict() 
-loggers = []
+loggers = dict()
 
 # overwrite default values if present in config file
 readConfig()     
@@ -92,19 +112,22 @@ readConfig()
 mc = remoAVR.AVR()
 mc.setValAddr(remoAVR.DDRA,0xff)
 mc.setValAddr(remoAVR.PORTA,0x00)
-mc.setValAddr(remoAVR.PORTB,0x01)
+mc.setValAddr(remoAVR.PORTB,0x00)
 while 1:
+    print "start new zycle"
     anfangszeit = time.time()
     wartezeit = letzte_zyklus + zyklus - anfangszeit
     letzte_zyklus = anfangszeit
     if wartezeit > 0:
+        print "sleep {} sec".format(wartezeit)
         time.sleep(wartezeit)
     
   
     
-    for logger in loggers:
+    for logger in loggers.keys():
+        print "processing data from logger {0}".format(loggers[logger])
         
-        files = getRawFiles(data_path + logger + "\\")
+        files = getRawFiles(data_path + loggers[logger] + "\\")
         
         newest_file = 0
 
@@ -117,9 +140,11 @@ while 1:
             continue
             
         #converting g2d to raw
+        print "opening conversion shell" 
         proc = subprocess.Popen( install_path +  ' ' + newest_file)
         time.sleep(5)
         proc.kill()
+        print "killed conversion shell"
         
         if delete_used_files: 
             for filepath in files:
@@ -133,13 +158,20 @@ while 1:
              
         header = F.readline().strip()
         keys = F.readline().strip()
-        # TODO: readout last valid line in file 
-        werte = F.readline().strip()
         
+        # readout last valid line in file 
+        liste_werte = None
+        for line in F.readlines():
+            werte = line.strip()
+            try:
+                int(werte.split(",")[0])
+                liste_werte = werte.split(",")
+            except:
+                continue
+                    
         F.close()
         
         liste_sensoren = keys.split(",")
-        liste_werte = werte.split(",")
         liste_floatwerte = list()
         for e in liste_werte:
             try:
@@ -150,55 +182,46 @@ while 1:
         
         ergebnis_messung = dict(zip(liste_sensoren, liste_floatwerte)) 
         
-        ergebnis_messung_sensoren = dict(ergebnis_messung)
-            
+        ergebnis_messung_sensoren = dict()   
         for key in ergebnis_messung.keys():
-                       
-            # loeschen alle Buchstaben aus Schluessel 
-            # pruefen ob Zahl uebrig -> ergibt sensorkey
-            # also nicht in ergebnis_messung_sensoren loeschen
-            # TODO: clear ergebnis_messung_sensoren of other stuff
-            if not str.isdigit(key.strip(string.letters)):
-                del ergebnis_messung_sensoren[key]
+            #parse the key for a number
+            int_list = []
+            for s in key:
+                try:
+                    if ":" in s:
+                        break
+                    int_list.append(int(s))
+                except ValueError:
+                    # ignore bad strings
+                    pass
             
-        #senor_messwerte = list()
-        
+            if len(int_list) != 0:
+                s = ""
+                for i in int_list:
+                    s = s+ str(i)
+                ergebnis_messung_sensoren[int(s)] = ergebnis_messung[key]
+            
+  
     
-    
-        # TODO: sensor port zuordnen
+        # TODO: sollwert pro sensor
         for sensor_keys in ergebnis_messung_sensoren.keys():
-                   
-            #senor_messwerte.append(ergebnis_messung_sensor[sensor_keys])
-                
-            sollwert = 40
+            print "sensor {}".format(sensor_keys)
+                          
+            sollwert = 30
             
-            Kp = 22
-            
-            istwert= ergebnis_messung [sensor_keys] 
+            istwert= ergebnis_messung_sensoren[sensor_keys] 
             regelabweichung = sollwert - istwert
             stellgroesse = regelabweichung * Kp
             
-            if stellgroesse > 0:
-                
-                mc.setValAddr(remoAVR.PORTB,0x00)
-                mc.toggle(remoAVR.PORTA, 1, stellgroesse)
-                mc.setValAddr(remoAVR.PORTB,0xff)
-    
-                
-    pass
-    
-    
-            
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-        
+            try:
+                Port, Pin = getPort(logger, sensor_keys)
+                if stellgroesse > 0:
+                    #mc.setValAddr(remoAVR.PORTB,0x00)
+                    mc.toggle(Port, Pin, stellgroesse)                
+                    #mc.setValAddr(remoAVR.PORTB,0x01)
+            except:
+                print """logger {} kanal {} 
+                hat keinen zugewiesenen Port""".format(
+                                                       loggers[logger],
+                                                       sensor_keys)
+                print "stellgroesse waere: {}".format(stellgroesse)
