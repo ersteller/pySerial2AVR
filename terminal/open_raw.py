@@ -106,13 +106,14 @@ sensor_ports = dict()
 loggers = dict()
 
 # overwrite default values if present in config file
-readConfig()     
-
+readConfig() 
+  
+date = loggers.keys() #allocate a date for each logger folder
 
 mc = remoAVR.AVR()
 mc.setValAddr(remoAVR.DDRA,0xff)
 mc.setValAddr(remoAVR.PORTA,0x00)
-mc.setValAddr(remoAVR.PORTB,0x00)
+#mc.setValAddr(remoAVR.PORTB,0x00)
 while 1:
     print "start new zycle"
     anfangszeit = time.time()
@@ -122,8 +123,6 @@ while 1:
         print "sleep {} sec".format(wartezeit)
         time.sleep(wartezeit)
     
-  
-    
     for logger in loggers.keys():
         print "processing data from logger {0}".format(loggers[logger])
         
@@ -132,8 +131,8 @@ while 1:
         newest_file = 0
 
         for filepath in files:
-            if isFileNewerThan (filepath,date):
-                date = os.path.getmtime (filepath)
+            if isFileNewerThan(filepath,date[logger]):
+                date[logger] = os.path.getmtime (filepath)
                 newest_file = filepath
         
         if not newest_file:
