@@ -53,6 +53,7 @@ class AVR:
     
     def __init__(self):
         self.ser = serial.Serial(0)
+        self.ser.setBaudrate(19200)
         print self.ser.portstr       # check which port was really used#
         # TODO: get type from device
         self.type = "m2560"
