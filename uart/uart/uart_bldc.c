@@ -20,59 +20,33 @@ DESCRIPTION:
 #include <stdlib.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/signal.h>
 #include <avr/pgmspace.h>
+#include <avr/wdt.h>
 
 #include "uart.h"
+#include "remo.h"
 //#include "seriellout.h"
 
 
 /* define CPU frequency in Mhz here if not defined in Makefile */
-
-#define F_CPU 8000000UL
-
 #ifndef F_CPU
-#define F_CPU 8000000UL
+#define F_CPU 16000000UL
 #endif
 
-
-/* 9600 baud */
-#define UART_BAUD_RATE      9600      
-
-/*
-int main (void){
-	init_usart();
-
-	//PORTF=0<<4; 	//1 bedeutet pullup an für adc
-	//DDRE |= (1<<3);		//wegen uart
-  sei();  
-
-	while(1)
-	{ 		
-		outc(12);
-	  for (uint8_t i=0;i<=15;i++)
-		{
-			 outs("adc ");outu(i);outs("   ");
-		}
-
-    asm("sleep");
-	}
-}
-
-*/
-
+#define UART_BAUD_RATE      38400      
 
 int main(void)
 {
 	
     unsigned int c;
-    char buffer[7];
-    int  num=134;
-	char instruction[8] = {0};
-	uint8_t cnt = 0;	
-			
+	
+	/* disable watchdog in case we were reseted just now (comes up enabled) */	
+	MCUSR &= ~(1<<WDRF);	
+	wdt_disable(); 
+	
+	/* ready led */
+	PORTB = 0xfe;	
 	DDRB = 0xff;
-	PORTB = 0xfe;
 
     /*
      *  Initialize UART library, pass baudrate and AVR cpu clock
@@ -95,7 +69,7 @@ int main(void)
      *  uart_puts() blocks if it can not write the whole string to the circular 
      *  buffer
      */
-    uart_puts("Atmega2560 initialized\n");
+    uart_puts("Atmega2560 bldc initialized\n");
     
     /*
      * Transmit string from program memory to UART
@@ -118,6 +92,12 @@ int main(void)
     
     for(;;)
     {
+		PWMHandler();
+		// if timer overflow interrupt flag was set 
+		// get sample from the LUT 
+		// calc and put in structures so interrupts can work only with structures  
+		
+		
         /*
          * Get received character from ringbuffer
          * uart_getc() returns in the lower byte the received character and 
@@ -125,16 +105,7 @@ int main(void)
          * UART_NO_DATA is returned when no data is available.
          *
          */
-		
-		/*
-		if (cnt > 100)
-		{	
-			cnt = 0;
-			PORTB = PORTB ^ 1;
-		}        
-		cnt++;*/
-		
-		c = uart_getc();
+        c = uart_getc();
         if ( c & UART_NO_DATA )
         {
             /* 
@@ -176,13 +147,7 @@ int main(void)
 			 * frame and calls the appropriate function if the frame was  
 			 * received successfully, or returns error code
 			 */
-			instructionHandler( (unsigned char)c );
-			
-			
-			
-			
-			
-			
+			instructionHandler( (unsigned char)c );	
         }
     }
     
