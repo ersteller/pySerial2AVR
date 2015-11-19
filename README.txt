@@ -50,7 +50,30 @@ terminal:
 		'g' get value from address
 		    send: g <addr>\r
 		    recv: g <addr> <value>\n\r
+		    
+		'm' malloc
+		    send: g <addr>\r
+		    recv: g <addr> <value>\n\r
+		    
+		'f' free memor
+		    send: g <addr>\r
+		    recv: g <addr> <value>\n\r
+		    
+		'b'  write binary stream of len 
+		    binary data is received without response
+
+	        'a' setPWMBuffer
+
+		'p' setPhaseShift
+
+		'o' setOutputPinsAddr
+		
+		'A' setAmplidudeAndSpeed
+
+		  
 		________________________________________
+		
+		
 		
 		remoAVR does:
 		setup serial communication 
