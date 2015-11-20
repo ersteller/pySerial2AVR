@@ -1,7 +1,12 @@
 This project has the goal to manipulate input and output pins of avr devices over serial interface,
 allowing python scripts to set and get io states of the device. 
-source for io change is a file creation and the output is set after an algorithm evaluating the file content. 
-it is possible to change io on the fly with a terminal input according to the protocol 
+
+it is possible to change io manually in realtime with a terminal input according to the protocol.
+
+There are some functions to manipulate the PWM module. PWM controll gui uses these functions.
+this allows for microstepping a bldc-motor. 
+
+TODO: problem is rather large minimum pulse width resulting from pin level calculation in isr 
 
 it consists of 
 - terminal class: 	handling the communication with the device for python scripts 
@@ -52,23 +57,30 @@ terminal:
 		    recv: g <addr> <value>\n\r
 		    
 		'm' malloc
-		    send: g <addr>\r
-		    recv: g <addr> <value>\n\r
+		    send: m <size>\r
+		    recv: m <size> <addr>\n\r
 		    
 		'f' free memor
-		    send: g <addr>\r
-		    recv: g <addr> <value>\n\r
+		    send: f <addr>\r
+		    recv: f <addr>\n\r
 		    
 		'b'  write binary stream of len 
 		    binary data is received without response
 
-	        'a' setPWMBuffer
+	        'a' setPWMBuffer defaults to sin LUT if no addr specified
+	            send: a <addr>\r
+	            recv: a <addr> <realaddr>\n\r  
 
-		'p' setPhaseShift
+		'p' setPhaseShift in number of sample offset in LUT buffer
+		    send: p <phaseA> <phaseB> <phaseC>\r
+	            recv: p <phaseA> <phaseB> <phaseC>\n\r  
 
-		'o' setOutputPinsAddr
-		
+		'o' setOutputPinsAddr 
+		    send: o <portAddr> <AHighPinNr> <ALowPinNr> <BHighPinNr> <BLowPinNr> <CHighPinNr> <CLowPinNr> \r
+	            recv: o <portAddr> <AHighPinNr> <ALowPinNr> <BHighPinNr> <BLowPinNr> <CHighPinNr> <CLowPinNr> \n\r  
+	            
 		'A' setAmplidudeAndSpeed
+		    currently not usefull (amplification is only natural numbers (uint8) and speed not imlemented)
 
 		  
 		________________________________________
